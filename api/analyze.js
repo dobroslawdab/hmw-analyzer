@@ -1,24 +1,46 @@
+// api/analyze.js
+
 const OpenAI = require('openai');
 const NodeCache = require('node-cache');
 
 const cache = new NodeCache({ stdTTL: 900 });
 
 const SYSTEM_PROMPT = `Jesteś ekspertem w analizie pytań "Jak moglibyśmy" (How Might We) używanych w Design Sprint.
-Twoim zadaniem jest analiza i delikatne ulepszenie pytania przy zachowaniu oryginalnego sensu i intencji.
+Twoim zadaniem jest analiza i ewaluacja pytania według następujących kryteriów:
 
-Zasady:
-1. Zachowaj oryginalny sens i kontekst pytania
-2. Wprowadzaj tylko niezbędne poprawki
-3. Upewnij się, że pytanie zaczyna się od "Jak moglibyśmy"
-4. Nie zmieniaj kluczowych elementów i szczegółów pytania
-5. Zachowaj wszystkie specyficzne terminy i nazwy własne
+KRYTERIA OCENY:
+1. Poprawne rozpoczęcie
+   - Pytanie MUSI zaczynać się od "Jak moglibyśmy"
+   - Jest to kluczowe dla zachęcenia do eksploracji rozwiązań
 
-Zwróć strukturę JSON zawierającą:
-- ulepszonePytanie: poprawiona wersja z minimalnymi zmianami
-- oryginalnyKontekst: true/false czy zachowano oryginalny kontekst
-- sugestie: lista konkretnych sugestii dotyczących pytania
-- ocenaJakosci: liczba 0-1 określająca jakość pytania
-- problemyDoPoprawy: lista konkretnych elementów wymagających poprawy`;
+2. Odpowiedni poziom ogólności
+   - Nie może być zbyt ogólne (np. "jak moglibyśmy poprawić wszystko")
+   - Nie może być zbyt szczegółowe (np. sugerować konkretne rozwiązanie)
+   - Powinno zostawiać przestrzeń na różne rozwiązania
+
+3. Orientacja na działanie
+   - Pytanie powinno sugerować możliwość działania
+   - Powinno być sformułowane w sposób umożliwiający generowanie rozwiązań
+
+4. Koncentracja na użytkowniku
+   - Pytanie powinno odnosić się do potrzeb użytkownika/klienta
+   - Powinno skupiać się na rezultatach dla użytkownika
+
+Przeanalizuj pytanie i zwróć JSON zawierający:
+{
+  "ulepszonePytanie": "poprawiona wersja pytania",
+  "oryginalnyKontekst": true/false,
+  "ocenaJakosci": 0-1,
+  "kryteria": {
+    "poprawnePoczatek": true/false,
+    "odpowiedniPoziom": true/false,
+    "orientacjaNaDzialanie": true/false,
+    "koncentracjaNaUzytkowniku": true/false
+  },
+  "sugestie": ["lista sugestii poprawy"],
+  "problemyDoPoprawy": ["lista konkretnych problemów"],
+  "mocneStrony": ["lista mocnych stron pytania"]
+}`;
 
 const handler = async (req, res) => {
   // Dodaj nagłówki CORS
@@ -74,21 +96,16 @@ Skup się na minimalnych, niezbędnych poprawkach.`;
       max_tokens: 500
     });
 
-    // Próba sparsowania odpowiedzi jako JSON
     try {
       const result = JSON.parse(completion.choices[0].message.content);
       cache.set(pytanie, result);
       return res.status(200).json(result);
     } catch (parseError) {
-      // Jeśli parsowanie się nie powiedzie, zwróć surową odpowiedź w ustrukturyzowanej formie
-      const result = {
-        ulepszonePytanie: completion.choices[0].message.content,
-        oryginalnyKontekst: true,
-        sugestie: [],
-        ocenaJakosci: 0.5,
-        problemyDoPoprawy: ['Nie udało się przeanalizować odpowiedzi']
-      };
-      return res.status(200).json(result);
+      console.error('Error parsing OpenAI response:', parseError);
+      return res.status(500).json({ 
+        error: 'Failed to parse AI response',
+        details: parseError.message 
+      });
     }
   } catch (error) {
     console.error('Error:', error);
