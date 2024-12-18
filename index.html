@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HMW Analyzer</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 40px auto; 
+            padding: 0 20px; 
+        }
+        .container { margin: 20px 0; }
+        textarea { 
+            width: 100%; 
+            height: 100px; 
+            margin: 10px 0; 
+            padding: 10px; 
+        }
+        button { 
+            padding: 10px 20px; 
+            background-color: #0070f3; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+        }
+        .result { 
+            margin-top: 20px; 
+            padding: 20px; 
+            background-color: #f0f0f0; 
+            border-radius: 5px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Analiza pytań "Jak moglibyśmy"</h1>
+    <div class="container">
+        <label for="question">Wpisz swoje pytanie:</label>
+        <textarea id="question" placeholder="Jak moglibyśmy..."></textarea>
+        <button onclick="analyzeQuestion()">Analizuj</button>
+    </div>
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        async function analyzeQuestion() {
+            const question = document.getElementById('question').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('https://hmw-analyzer.vercel.app/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pytanie: question })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <h3>Wynik analizy:</h3>
+                    <p>${data.ulepszonePytanie}</p>
+                `;
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>Błąd:</h3>
+                    <p>${error.message}</p>
+                `;
+                resultDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
