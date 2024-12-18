@@ -1,15 +1,10 @@
 {
     "version": 2,
-    "builds": [
-      {
-        "src": "api/analyze.js",
-        "use": "@vercel/node"
+    "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }],
+    "functions": {
+      "api/analyze.js": {
+        "memory": 1024,
+        "maxDuration": 10
       }
-    ],
-    "routes": [
-      {
-        "src": "/api/(.*)",
-        "dest": "api/analyze.js"
-      }
-    ]
+    }
   }

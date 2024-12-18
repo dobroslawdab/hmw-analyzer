@@ -3,7 +3,7 @@ const NodeCache = require('node-cache');
 
 const cache = new NodeCache({ stdTTL: 900 });
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   // Dodaj nagłówki CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,12 +24,6 @@ module.exports = async (req, res) => {
 
     if (!pytanie) {
       return res.status(400).json({ error: 'Pytanie jest wymagane' });
-    }
-
-    // Sprawdź cache
-    const cachedResult = cache.get(pytanie);
-    if (cachedResult) {
-      return res.status(200).json(cachedResult);
     }
 
     const openai = new OpenAI({
@@ -56,12 +50,11 @@ module.exports = async (req, res) => {
       oryginalnyKontekst: true
     };
 
-    // Zapisz w cache
-    cache.set(pytanie, result);
-
     return res.status(200).json(result);
   } catch (error) {
     console.error('Error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
+
+module.exports = handler;
