@@ -7,12 +7,17 @@ const handler = async (req, res) => {
   // Dodaj nagłówki CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   // Obsługa OPTIONS dla CORS
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).json({ body: "OK" });
+    return res.status(200).end();
+  }
+
+  // Test endpoint - dodaj prostą odpowiedź dla GET
+  if (req.method === 'GET') {
+    return res.status(200).json({ message: 'API is working!' });
   }
 
   if (req.method !== 'POST') {
@@ -21,6 +26,9 @@ const handler = async (req, res) => {
 
   try {
     const { pytanie } = req.body;
+
+    // Logowanie dla debugowania
+    console.log('Otrzymane pytanie:', pytanie);
 
     if (!pytanie) {
       return res.status(400).json({ error: 'Pytanie jest wymagane' });
@@ -50,10 +58,17 @@ const handler = async (req, res) => {
       oryginalnyKontekst: true
     };
 
+    // Logowanie dla debugowania
+    console.log('Wysyłam odpowiedź:', result);
+
     return res.status(200).json(result);
   } catch (error) {
     console.error('Error:', error);
-    return res.status(500).json({ error: 'Internal server error', details: error.message });
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message,
+      stack: error.stack 
+    });
   }
 };
 

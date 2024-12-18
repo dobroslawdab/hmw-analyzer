@@ -1,6 +1,12 @@
 {
     "version": 2,
-    "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }],
+    "routes": [
+      {
+        "src": "/api/analyze",
+        "dest": "/api/analyze.js",
+        "methods": ["POST", "OPTIONS"]
+      }
+    ],
     "functions": {
       "api/analyze.js": {
         "memory": 1024,
