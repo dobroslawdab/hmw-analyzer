@@ -1,57 +1,67 @@
-// server.js (Node.js + Express)
-const express = require('express');
-const cors = require('cors');
 const OpenAI = require('openai');
 const NodeCache = require('node-cache');
 
-const app = express();
 const cache = new NodeCache({ stdTTL: 900 });
 
-// Konfiguracja CORS - dodaj domenę swojego Webflow
-app.use(cors({
-  origin: 'https://twoja-domena-webflow.webflow.io',
-  methods: ['POST'],
-  allowedHeaders: ['Content-Type']
-}));
+module.exports = async (req, res) => {
+  // Dodaj nagłówki CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
+  // Obsługa OPTIONS dla CORS
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).json({ body: "OK" });
+  }
 
-app.use(express.json());
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-const SYSTEM_PROMPT = `Jesteś ekspertem w analizie pytań "Jak moglibyśmy" (How Might We) używanych w Design Sprint...`; // reszta prompta jak wcześniej
-
-app.post('/api/analyze-hmw', async (req, res) => {
   try {
     const { pytanie } = req.body;
-    
+
+    if (!pytanie) {
+      return res.status(400).json({ error: 'Pytanie jest wymagane' });
+    }
+
     // Sprawdź cache
     const cachedResult = cache.get(pytanie);
     if (cachedResult) {
-      return res.json(cachedResult);
+      return res.status(200).json(cachedResult);
     }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Przeanalizuj: "${pytanie}"` }
+        {
+          role: "system",
+          content: "Jesteś ekspertem w analizie pytań 'Jak moglibyśmy'. Zachowuj oryginalny sens i kontekst pytania."
+        },
+        {
+          role: "user",
+          content: `Przeanalizuj pytanie: "${pytanie}"`
+        }
       ],
       temperature: 0.7,
-      max_tokens: 500
     });
 
-    const result = JSON.parse(completion.choices[0].message.content);
-    cache.set(pytanie, result);
-    
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+    const result = {
+      ulepszonePytanie: completion.choices[0].message.content,
+      oryginalnyKontekst: true
+    };
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+    // Zapisz w cache
+    cache.set(pytanie, result);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};

@@ -1,15 +1,30 @@
-import { OpenAI } from 'openai';
-import NodeCache from 'node-cache';
+const OpenAI = require('openai');
+const NodeCache = require('node-cache');
 
 const cache = new NodeCache({ stdTTL: 900 });
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // Dodaj nagłówki CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
+  // Obsługa OPTIONS dla CORS
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).json({ body: "OK" });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { pytanie } = req.body;
+
+    if (!pytanie) {
+      return res.status(400).json({ error: 'Pytanie jest wymagane' });
+    }
 
     // Sprawdź cache
     const cachedResult = cache.get(pytanie);
@@ -44,9 +59,9 @@ export default async function handler(req, res) {
     // Zapisz w cache
     cache.set(pytanie, result);
 
-    res.status(200).json(result);
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
-}
+};
